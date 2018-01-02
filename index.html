@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="icon" href="http://static1.squarespace.com/static/5409f6a6e4b02af565feef8c/t/56704641c21b86f5af4f78b4/1503006871151/">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+    <title>Chatter Bug - Talk to the World</title>
+    <style>
+        #messages{
+            height:380px;
+            overflow-y: auto;
+        }
+        h1{
+            color:green;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 offset-md-3 col-sm-12">
+                <h1 class="text-center">
+                    Chatter Bug
+                    <img src="http://static1.squarespace.com/static/5409f6a6e4b02af565feef8c/t/56704641c21b86f5af4f78b4/1503006871151/" width="50" height="50"/>
+                </h1>
+                <div id="status"></div>
+                <div id="chat">
+                    <input type="text" id="username" class="form-control" placeholder="Enter name...">
+                    <br>
+                    <div class="card">
+                        <div id="messages" class="card-block">
+
+                        </div>
+                    </div>
+                    <br>
+                    <textarea id="textarea"  class="form-control" placeholder="Enter message..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+    <script>
+        (function(){
+            var element = function(id){
+                return document.getElementById(id);
+            }
+            //get elements
+            var status=element('status');
+            var messages=element('messages');
+            var textarea=element('textarea');
+            var username=element('username');
+
+            //set default status
+            var statusDefault= status.textContent;
+
+            var setStatus= function(s){
+                //set status 
+                status.textContent=s;
+                if(s !== statusDefault){
+                    var delay = setTimeout(function(){
+                        setStatus(statusDefault);
+                    }, 4000);
+                }
+            }
+
+            //connect to socket.io
+            var socket=io.connect();
+            //check for connection
+            if(socket!==undefined){
+                console.log('connected to socket...');
+                socket.on('output', function(data){
+                    if(data.length){
+                        for(var i=0;i<data.length;i++){
+                            var message=document.createElement('div');
+                            message.setAttribute('class','chat-message');
+                            
+                            var name = document.createElement('span');
+                            name.textContent = data[i].name + ": ";
+                            name.setAttribute('style','font-weight:bold');
+                            
+                            var msg = document.createElement('span');
+                            msg.textContent = data[i].message;
+
+                            message.appendChild(name);
+                            message.appendChild(msg);
+                            messages.appendChild(message);
+                            messages.insertBefore(message,messages.firstChild);
+                        }
+                    }
+                });
+
+                //get status from server
+                socket.on('status',function(data){
+                    // get message status
+                    setStatus((typeof data === 'object')? data.message: data);
+                    if(data.clear){
+                        textarea.value = '';
+                    }
+                });
+
+                textarea.addEventListener('keydown',function(event){
+                    if(event.which === 13 && event.shiftKey ==false){
+                        socket.emit('input',{
+                            name:username.value,
+                            message:textarea.value
+                        });   
+                        
+                        event.preventDefault();
+                    }
+                });
+
+                socket.on('cleared',function(){
+                    messages.textContent = '';
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
